@@ -225,14 +225,15 @@ module Paperclip
         end
 
         def parse_credentials(credentials)
+          creds = credentials.respond_to?('call') ? credentials.call(self) : credentials
           result =
-            case credentials
+            case creds
             when File
-              YAML.load(ERB.new(File.read(credentials.path)).result)
+              YAML.load(ERB.new(File.read(creds.path)).result)
             when String, Pathname
-              YAML.load(ERB.new(File.read(credentials)).result)
+              YAML.load(ERB.new(File.read(creds)).result)
             when Hash
-              credentials
+              creds
             else
               raise ArgumentError, ":google_drive_credentials are not a path, file, nor a hash"
             end
