@@ -92,6 +92,7 @@ module Paperclip
               :api_method => drive.files.delete,
               :parameters => parameters)
             if result.status != 200
+              puts "ErrorCode: #{result.status}"
               puts "An error occurred: #{result.data['error']['message']}"
             end
           end
