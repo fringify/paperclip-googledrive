@@ -79,6 +79,7 @@ module Paperclip
       end
       #
       def flush_deletes
+        puts "Dan: Queue for delete: #{@queued_for_delete}"
         @queued_for_delete.each do |path|
           Paperclip.log("delete #{path}")
           client = google_api_client
