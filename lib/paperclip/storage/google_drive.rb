@@ -43,36 +43,32 @@ module Paperclip
       #
       def flush_writes
         @queued_for_write.each do |style, file|
-          if exists?(path(style))
-            raise FileExists, "file \"#{path(style)}\" already exists in your Google Drive"
-          else
-            #upload(style, file) #style file
-            client = google_api_client
-            drive = client.discovered_api('drive', 'v2')
-            result = client.execute(
-              :api_method => drive.files.get,
-              :parameters => { 'fileId' => @google_drive_options[:public_folder_id],
-                              'fields' => '  id, title' })
-            client.authorization.access_token = result.request.authorization.access_token
-            client.authorization.refresh_token = result.request.authorization.refresh_token
-            title, mime_type = title_for_file(style), "#{content_type}"
-            parent_id = @google_drive_options[:public_folder_id] # folder_id for Public folder
-            metadata = drive.files.insert.request_schema.new({
-              'title' => title, #if it is no extension, that is a folder and another folder
-              'description' => 'paperclip file on google drive',
-              'mimeType' => mime_type })
-            if parent_id
-              metadata.parents = [{'id' => parent_id}]
-            end
-            media = Google::APIClient::UploadIO.new( file, mime_type)
-            result = client.execute(
-              :api_method => drive.files.insert,
-              :body_object => metadata,
-              :media => media,
-              :parameters => {
-                'uploadType' => 'multipart',
-                'alt' => 'json' })
+          #upload(style, file) #style file
+          client = google_api_client
+          drive = client.discovered_api('drive', 'v2')
+          result = client.execute(
+            :api_method => drive.files.get,
+            :parameters => { 'fileId' => @google_drive_credentials[:public_folder_id],
+                            'fields' => '  id, title' })
+          client.authorization.access_token = result.request.authorization.access_token
+          client.authorization.refresh_token = result.request.authorization.refresh_token
+          title, mime_type = title_for_file(style), "#{content_type}"
+          parent_id = @google_drive_credentials[:public_folder_id] # folder_id for Public folder
+          metadata = drive.files.insert.request_schema.new({
+            'title' => title, #if it is no extension, that is a folder and another folder
+            'description' => 'paperclip file on google drive',
+            'mimeType' => mime_type })
+          if parent_id
+            metadata.parents = [{'id' => parent_id}]
           end
+          media = Google::APIClient::UploadIO.new( file, mime_type)
+          result = client.execute(
+            :api_method => drive.files.insert,
+            :body_object => metadata,
+            :media => media,
+            :parameters => {
+              'uploadType' => 'multipart',
+              'alt' => 'json' })
         end
         after_flush_writes
         @queued_for_write = {}
@@ -211,10 +207,10 @@ module Paperclip
       end
 
       def find_public_folder
-        unless @google_drive_options[:public_folder_id]
+        unless @google_drive_credentials[:public_folder_id]
           raise KeyError, "you must set a Public folder if into options"
         end
-        @google_drive_options[:public_folder_id]
+        @google_drive_credentials[:public_folder_id]
       end
       class FileExists < ArgumentError
       end
@@ -223,6 +219,10 @@ module Paperclip
         def file_title
           return @google_drive_options[:path] if @google_drive_options[:path] #path: proc
           eval %(proc { |style| "\#{id}_\#{#{name}.original_filename}"})
+        end
+
+        def parse_folder(credentials)
+          creds = credentials.respond_to?('call') ? credentials.call(self) : credentials
         end
 
         def parse_credentials(credentials)
@@ -240,7 +240,7 @@ module Paperclip
             end
           result.symbolize_keys #or string keys
         end
-        # check either all ccredentials keys is set
+        # check either all credentials keys is set
         def assert_required_keys
           keys_list = [:client_id, :client_secret, :access_token, :refresh_token]
           keys_list.each do |key|
