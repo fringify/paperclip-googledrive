@@ -202,7 +202,7 @@ module Paperclip
           metadata = metadata_by_id(searched_id) unless searched_id.nil?
           metadata['webContentLink']
         else
-          'No picture' # ---- ?
+          nil
         end
       end
 
